@@ -11,7 +11,7 @@ exports.addSchool = catchAsync(async (req, res, next) => {
   if (!school_name || !school_address || !latitude || !longitude) {
     return next(
       new AppError(
-        "All fields (school_name, aschool_ddress, latitude, longitude) are required",
+        "All fields (school_name, school_address, latitude, longitude) are required",
         400
       )
     );
