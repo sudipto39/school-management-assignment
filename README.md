@@ -115,7 +115,6 @@ DB_PASSWORD=your_mysql_password
     "longitude": 88.3634,
     "distance": 0
    },
-   // ...other schools sorted by distance
   ]
  }
  ```
