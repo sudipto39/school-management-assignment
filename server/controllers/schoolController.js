@@ -5,13 +5,13 @@ const { query } = require("../config/db"); // use your exported query helper
 // const calculateDistance = require("../utils/distanceCalculator"); 
 
 exports.addSchool = catchAsync(async (req, res, next) => {
-  const { name, address, latitude, longitude } = req.body;
+  const { school_name, school_address, latitude, longitude } = req.body;
 
   // Validation
-  if (!name || !address || !latitude || !longitude) {
+  if (!school_name || !school_address || !latitude || !longitude) {
     return next(
       new AppError(
-        "All fields (name, address, latitude, longitude) are required",
+        "All fields (school_name, aschool_ddress, latitude, longitude) are required",
         400
       )
     );
@@ -19,13 +19,13 @@ exports.addSchool = catchAsync(async (req, res, next) => {
 
   // Insert school into database
   const insertSql = `
-    INSERT INTO schools (name, address, latitude, longitude)
-    VALUES (?, ?, ?, ?)
-  `;
+  INSERT INTO schools (school_name, school_address, latitude, longitude)
+  VALUES (?, ?, ?, ?)
+`;
 
   const result = await query({
     query: insertSql,
-    values: [name, address, latitude, longitude],
+    values: [school_name, school_address, latitude, longitude],
   });
 
   console.log("Result of raw SQL insert:", result);
@@ -40,6 +40,13 @@ exports.addSchool = catchAsync(async (req, res, next) => {
 
 // List schools (optionally sorted by distance if lat/lon provided by middleware)
 exports.listSchools = catchAsync(async (req, res, next) => {
+  const userLat = parseFloat(req.query.latitude);
+  const userLon = parseFloat(req.query.longitude);
+
+  if (isNaN(userLat) || isNaN(userLon)) {
+    return next(new AppError("Please provide valid latitude and longitude as query parameters", 400));
+  }
+
   // Fetch all schools from the database
   const selectAllSql = `SELECT * FROM schools`;
   const schools = await query({
@@ -51,22 +58,19 @@ exports.listSchools = catchAsync(async (req, res, next) => {
     return next(new AppError("No schools found", 404));
   }
 
-  let finalSchools = schools;
+  // Calculate distance for each school
+  const calculateDistance = require("../utils/distanceCalculator");
+  const schoolsWithDistance = schools.map((school) => ({
+    ...school,
+    distance: calculateDistance(userLat, userLon, school.latitude, school.longitude),
+  }));
 
-  // If distanceCalculatorMiddleware has set req.distance, calculate distances
-  if (req.distance) {
-    finalSchools = schools.map((school) => ({
-      ...school,
-      distance: req.distance(school.latitude, school.longitude),
-    }));
-
-    // Sort by nearest first
-    finalSchools.sort((a, b) => a.distance - b.distance);
-  }
+  // Sort by nearest first
+  schoolsWithDistance.sort((a, b) => a.distance - b.distance);
 
   res.status(200).json({
     status: "success",
-    results: finalSchools.length,
-    data: finalSchools,
+    results: schoolsWithDistance.length,
+    data: schoolsWithDistance,
   });
 });
